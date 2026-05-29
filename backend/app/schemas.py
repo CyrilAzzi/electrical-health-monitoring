@@ -19,6 +19,7 @@ class EquipmentCreate(BaseModel):
     alert_imbalance_pct: float = Field(10.0, gt=0, le=100, description="Seuil de déséquilibre entre phases (%)")
     alert_battery_min: float = Field(12.2, gt=0, description="Tension batterie minimale (V)")
     alert_voltage_deviation_pct: float = Field(10.0, gt=0, le=100, description="Écart de tension max vs nominal (%)")
+    comm_timeout_sec: int = Field(60, gt=0, description="Délai avant alerte perte de communication (sec)")
 
 
 class EquipmentRead(EquipmentCreate):
@@ -47,6 +48,8 @@ class MeasurementCreate(BaseModel):
     voltage_c: float | None = None
     # Batterie (optionnel — absent si pas d'UPS)
     battery_voltage: float | None = Field(None, ge=0)
+    # Capteur d'ouverture de porte (optionnel)
+    door_open: bool | None = None
 
 
 class MeasurementRead(MeasurementCreate):

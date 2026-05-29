@@ -4,9 +4,11 @@ from app.alert_rules import (
     AlertThresholds,
     check_abnormal_voltage,
     check_current_imbalance,
+    check_door_open,
     check_high_temperature,
     check_low_battery,
     check_overcurrent,
+    check_sensor_fault,
     check_temperature_trend,
     evaluate_all_rules,
 )
@@ -286,3 +288,74 @@ class TestCTOnlyMode:
         m = _make_ct_only_measurement(current_a=70, current_b=45, current_c=45)
         alerts = evaluate_all_rules(m, nominal_current=100)
         assert any(a["rule_name"] == "current_imbalance" for a in alerts)
+
+
+# --- Capteur défectueux ---
+
+class TestSensorFault:
+    def test_no_fault_when_all_normal(self):
+        m = _make_measurement()
+        assert check_sensor_fault(m) == []
+
+    def test_ct_disconnected_one_phase(self):
+        """CT débranché sur phase B : courant = 0 alors que A et C sont actives."""
+        m = _make_measurement(current_a=45, current_b=0, current_c=48)
+        alerts = check_sensor_fault(m)
+        assert len(alerts) == 1
+        assert alerts[0]["rule_name"] == "sensor_fault"
+        assert alerts[0]["severity"] == "critical"
+        assert "phase B" in alerts[0]["message"]
+
+    def test_no_fault_when_all_zero(self):
+        """Panneau éteint (tout à 0) : pas de faux positif."""
+        m = _make_measurement(current_a=0, current_b=0, current_c=0)
+        assert check_sensor_fault(m) == []
+
+    def test_temp_probe_broken_negative(self):
+        """DS18B20 retourne -127°C quand il est défaillant."""
+        m = _make_measurement(temperature_2=-127)
+        alerts = check_sensor_fault(m)
+        assert len(alerts) == 1
+        assert "défaillante" in alerts[0]["message"]
+        assert "capteur" in alerts[0]["message"].lower() or "sonde" in alerts[0]["message"].lower()
+
+    def test_temp_probe_broken_high(self):
+        """Lecture aberrante > 150°C."""
+        m = _make_measurement(temperature_1=200)
+        alerts = check_sensor_fault(m)
+        assert len(alerts) == 1
+
+    def test_normal_high_temp_not_fault(self):
+        """70°C est élevé mais pas aberrant — pas une faute capteur."""
+        m = _make_measurement(temperature_1=70)
+        assert check_sensor_fault(m) == []
+
+    def test_multiple_faults(self):
+        """CT débranché + sonde cassée en même temps."""
+        m = _make_measurement(current_a=50, current_b=0, current_c=45, temperature_3=-127)
+        alerts = check_sensor_fault(m)
+        assert len(alerts) == 2
+
+
+# --- Ouverture de porte ---
+
+class TestDoorOpen:
+    def test_no_alert_when_door_absent(self):
+        m = _make_measurement()
+        assert check_door_open(m) == []
+
+    def test_no_alert_when_door_closed(self):
+        m = _make_measurement(door_open=False)
+        assert check_door_open(m) == []
+
+    def test_alert_when_door_open(self):
+        m = _make_measurement(door_open=True)
+        alerts = check_door_open(m)
+        assert len(alerts) == 1
+        assert alerts[0]["rule_name"] == "door_open"
+        assert alerts[0]["severity"] == "warning"
+
+    def test_door_open_in_evaluate_all(self):
+        m = _make_measurement(door_open=True)
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        assert any(a["rule_name"] == "door_open" for a in alerts)

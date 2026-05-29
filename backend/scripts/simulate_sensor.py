@@ -90,6 +90,24 @@ def generate_ct_overheat(step: int):
     return base
 
 
+def generate_fault(step: int):
+    """Simule un capteur défectueux : CT débranché + sonde température cassée."""
+    base = generate_normal()
+    if step >= 3:
+        base["current_b"] = 0.0  # CT phase B débranché
+    if step >= 6:
+        base["temperature_2"] = -127.0  # DS18B20 défaillant
+    return base
+
+
+def generate_door(step: int):
+    """Simule une ouverture de porte du panneau."""
+    base = generate_normal()
+    # Porte ouverte entre les mesures 5 et 12
+    base["door_open"] = 5 <= step <= 12
+    return base
+
+
 SCENARIOS = {
     "normal": lambda step: generate_normal(),
     "overheat": generate_overheat,
@@ -97,6 +115,8 @@ SCENARIOS = {
     "battery": generate_battery,
     "ct_only": lambda step: generate_ct_only(step),
     "ct_overheat": generate_ct_overheat,
+    "fault": generate_fault,
+    "door": generate_door,
 }
 
 
@@ -148,6 +168,8 @@ def main():
                 line += f"  Bat={data['battery_voltage']:.2f}V"
             if "voltage_a" in data:
                 line += f"  V=[{data['voltage_a']:.1f}, {data['voltage_b']:.1f}, {data['voltage_c']:.1f}]"
+            if data.get("door_open"):
+                line += "  DOOR=OPEN"
             print(line)
 
             step += 1

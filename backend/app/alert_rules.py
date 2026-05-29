@@ -179,6 +179,65 @@ def check_abnormal_voltage(
     return alerts
 
 
+def check_sensor_fault(measurement: MeasurementCreate) -> list[dict]:
+    """Détecte les capteurs défectueux ou débranchés.
+
+    - CT débranché : courant = 0 sur une phase alors que les autres sont > 5A
+    - Sonde température coupée : lecture aberrante (< -20°C ou > 150°C)
+      Le DS18B20 retourne -127°C ou 85°C quand il est défaillant.
+    """
+    alerts = []
+
+    # CT débranché : une phase à 0 alors que les autres sont actives
+    currents = {
+        "A": measurement.current_a,
+        "B": measurement.current_b,
+        "C": measurement.current_c,
+    }
+    active_phases = [v for v in currents.values() if v > 5.0]
+    if len(active_phases) >= 2:
+        for phase, value in currents.items():
+            if value < 0.1:
+                alerts.append({
+                    "rule_name": "sensor_fault",
+                    "severity": "critical",
+                    "message": (
+                        f"CT phase {phase} possiblement débranché : "
+                        f"courant {value:.1f} A alors que les autres phases sont actives"
+                    ),
+                })
+
+    # Sonde température défaillante : lecture aberrante
+    temps = {
+        "1": measurement.temperature_1,
+        "2": measurement.temperature_2,
+        "3": measurement.temperature_3,
+    }
+    for sensor, value in temps.items():
+        if value < -20 or value > 150:
+            alerts.append({
+                "rule_name": "sensor_fault",
+                "severity": "critical",
+                "message": (
+                    f"Sonde température {sensor} défaillante : "
+                    f"lecture aberrante {value:.1f} °C"
+                ),
+            })
+
+    return alerts
+
+
+def check_door_open(measurement: MeasurementCreate) -> list[dict]:
+    """Détecte l'ouverture de la porte du panneau électrique."""
+    if measurement.door_open is None or not measurement.door_open:
+        return []
+    return [{
+        "rule_name": "door_open",
+        "severity": "warning",
+        "message": "Porte du panneau électrique ouverte",
+    }]
+
+
 def evaluate_all_rules(
     measurement: MeasurementCreate,
     nominal_current: float = 100.0,
@@ -195,6 +254,8 @@ def evaluate_all_rules(
     alerts.extend(check_high_temperature(measurement, t.temp_max))
     alerts.extend(check_low_battery(measurement, t.battery_min))
     alerts.extend(check_abnormal_voltage(measurement, nominal_voltage, t.voltage_deviation_pct))
+    alerts.extend(check_sensor_fault(measurement))
+    alerts.extend(check_door_open(measurement))
 
     if temperatures_history:
         alerts.extend(check_temperature_trend(temperatures_history))

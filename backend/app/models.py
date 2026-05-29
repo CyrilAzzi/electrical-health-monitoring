@@ -25,6 +25,7 @@ class Equipment(Base):
     alert_imbalance_pct: Mapped[float] = mapped_column(Float, default=10.0)
     alert_battery_min: Mapped[float] = mapped_column(Float, default=12.2)
     alert_voltage_deviation_pct: Mapped[float] = mapped_column(Float, default=10.0)
+    comm_timeout_sec: Mapped[int] = mapped_column(Integer, default=60)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -54,6 +55,8 @@ class Measurement(Base):
     voltage_c: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Batterie (optionnel)
     battery_voltage: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Capteur d'ouverture de porte (optionnel)
+    door_open: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
 class Alert(Base):

@@ -1,10 +1,12 @@
-"""Point d'entree FastAPI pour l'application de monitoring electrique."""
+"""Point d'entrée FastAPI pour l'application de monitoring électrique."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from .comm_watchdog import comm_watchdog_loop
 from .database import Base, engine
 from .mqtt_client import start_mqtt_client
 from .routes import alerts, equipment, health, measurements
@@ -23,12 +25,16 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Tables de base de donnees creees/verifiees")
 
-    # Demarrer le client MQTT
+    # Démarrer le client MQTT
     start_mqtt_client()
+
+    # Démarrer le watchdog de communication
+    watchdog_task = asyncio.create_task(comm_watchdog_loop())
 
     yield  # L'application tourne ici
 
-    logger.info("Arret de l'application")
+    watchdog_task.cancel()
+    logger.info("Arrêt de l'application")
 
 
 app = FastAPI(
