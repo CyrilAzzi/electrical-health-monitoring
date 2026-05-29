@@ -95,12 +95,12 @@ def _score_battery(measurement: MeasurementCreate) -> float:
 def get_status_label(score: float) -> str:
     """Convertit le score en label textuel."""
     if score >= 100:
-        return "excellent"
+        return "Excellent"
     if score >= 70:
-        return "normal"
+        return "Normal"
     if score >= 40:
-        return "a_surveiller"
-    return "critique"
+        return "À surveiller"
+    return "Critique"
 
 
 def compute_health_score(

@@ -10,9 +10,15 @@ from pydantic import BaseModel, Field
 class EquipmentCreate(BaseModel):
     equipment_id: str = Field(..., examples=["PANEL-001"])
     name: str = Field(..., examples=["Panneau principal"])
-    location: str | None = Field(None, examples=["Batiment A, Salle 12"])
-    nominal_current: float = Field(100.0, gt=0, description="Courant nominal en amperes")
+    location: str | None = Field(None, examples=["Bâtiment A, Salle 12"])
+    nominal_current: float = Field(100.0, gt=0, description="Courant nominal en ampères")
     nominal_voltage: float = Field(120.0, gt=0, description="Tension nominale en volts")
+    # Seuils d'alerte configurables
+    alert_current_pct: float = Field(80.0, gt=0, le=100, description="Seuil de surcourant (% du nominal)")
+    alert_temp_max: float = Field(60.0, gt=0, description="Température max avant alerte (°C)")
+    alert_imbalance_pct: float = Field(10.0, gt=0, le=100, description="Seuil de déséquilibre entre phases (%)")
+    alert_battery_min: float = Field(12.2, gt=0, description="Tension batterie minimale (V)")
+    alert_voltage_deviation_pct: float = Field(10.0, gt=0, le=100, description="Écart de tension max vs nominal (%)")
 
 
 class EquipmentRead(EquipmentCreate):
@@ -54,6 +60,7 @@ class AlertRead(BaseModel):
     rule_name: str
     severity: str
     message: str
+    is_active: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -64,5 +71,5 @@ class AlertRead(BaseModel):
 class HealthScoreResponse(BaseModel):
     equipment_id: str
     score: float = Field(..., ge=0, le=100)
-    status: str  # excellent, normal, a_surveiller, critique
+    status: str  # Excellent, Normal, À surveiller, Critique
     details: dict[str, float]  # sous-scores individuels

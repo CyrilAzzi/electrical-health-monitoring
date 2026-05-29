@@ -1,8 +1,7 @@
-"""Tests unitaires pour les regles d'alerte."""
-
-import pytest
+"""Tests unitaires pour les règles d'alerte."""
 
 from app.alert_rules import (
+    AlertThresholds,
     check_abnormal_voltage,
     check_current_imbalance,
     check_high_temperature,
@@ -15,7 +14,7 @@ from app.schemas import MeasurementCreate
 
 
 def _make_measurement(**overrides) -> MeasurementCreate:
-    """Helper : cree une mesure avec des valeurs par defaut normales."""
+    """Helper : crée une mesure avec des valeurs par défaut normales."""
     defaults = {
         "equipment_id": "TEST-001",
         "voltage_a": 120.0,
@@ -58,6 +57,18 @@ class TestOvercurrent:
         alerts = check_overcurrent(m, nominal_current=100)
         assert len(alerts) == 2
 
+    def test_custom_threshold(self):
+        m = _make_measurement(current_a=70, current_b=50, current_c=50)
+        assert check_overcurrent(m, nominal_current=100, threshold_pct=80) == []
+        alerts = check_overcurrent(m, nominal_current=100, threshold_pct=60)
+        assert len(alerts) == 1
+
+    def test_message_contains_threshold(self):
+        m = _make_measurement(current_a=85)
+        alerts = check_overcurrent(m, nominal_current=100, threshold_pct=80)
+        assert "seuil" in alerts[0]["message"]
+        assert "80" in alerts[0]["message"]
+
 
 # --- Current Imbalance ---
 
@@ -74,11 +85,17 @@ class TestCurrentImbalance:
         m = _make_measurement(current_a=70, current_b=50, current_c=50)
         alerts = check_current_imbalance(m)
         assert len(alerts) == 1
-        assert "desequilibre" in alerts[0]["message"].lower()
+        assert "séquilibre" in alerts[0]["message"].lower()
 
     def test_zero_currents(self):
         m = _make_measurement(current_a=0, current_b=0, current_c=0)
         assert check_current_imbalance(m) == []
+
+    def test_custom_threshold(self):
+        m = _make_measurement(current_a=55, current_b=50, current_c=50)
+        assert check_current_imbalance(m, threshold_pct=10) == []
+        alerts = check_current_imbalance(m, threshold_pct=3)
+        assert len(alerts) == 1
 
 
 # --- High Temperature ---
@@ -99,6 +116,12 @@ class TestHighTemperature:
         alerts = check_high_temperature(m)
         assert len(alerts) == 1
         assert alerts[0]["severity"] == "critical"
+
+    def test_custom_threshold(self):
+        m = _make_measurement(temperature_1=55)
+        assert check_high_temperature(m, temp_max=60) == []
+        alerts = check_high_temperature(m, temp_max=50)
+        assert len(alerts) == 1
 
 
 # --- Temperature Trend ---
@@ -141,6 +164,12 @@ class TestLowBattery:
         assert len(alerts) == 1
         assert alerts[0]["severity"] == "critical"
 
+    def test_custom_threshold(self):
+        m = _make_measurement(battery_voltage=12.5)
+        assert check_low_battery(m, battery_min=12.2) == []
+        alerts = check_low_battery(m, battery_min=13.0)
+        assert len(alerts) == 1
+
 
 # --- Abnormal Voltage ---
 
@@ -158,6 +187,12 @@ class TestAbnormalVoltage:
     def test_high_voltage(self):
         m = _make_measurement(voltage_a=150)
         alerts = check_abnormal_voltage(m, nominal_voltage=120)
+        assert len(alerts) == 1
+
+    def test_custom_threshold(self):
+        m = _make_measurement(voltage_a=130)
+        assert check_abnormal_voltage(m, nominal_voltage=120, deviation_pct=10) == []
+        alerts = check_abnormal_voltage(m, nominal_voltage=120, deviation_pct=5)
         assert len(alerts) == 1
 
 
@@ -181,3 +216,24 @@ class TestEvaluateAll:
         m = _make_measurement(equipment_id="EQ-42", current_a=90)
         alerts = evaluate_all_rules(m, nominal_current=100)
         assert all(a["equipment_id"] == "EQ-42" for a in alerts)
+
+    def test_custom_thresholds_object(self):
+        m = _make_measurement(current_a=70, current_b=70, current_c=70,
+                              temperature_1=55, battery_voltage=12.5)
+        # Avec seuils par défaut : pas d'alertes
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        assert len(alerts) == 0
+        # Avec seuils stricts : alertes
+        strict = AlertThresholds(current_pct=60, temp_max=50, battery_min=13.0)
+        alerts = evaluate_all_rules(m, nominal_current=100, thresholds=strict)
+        rule_names = {a["rule_name"] for a in alerts}
+        assert "overcurrent" in rule_names
+        assert "high_temperature" in rule_names
+        assert "low_battery" in rule_names
+
+    def test_messages_have_accents(self):
+        m = _make_measurement(current_a=90, temperature_1=65)
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        messages = " ".join(a["message"] for a in alerts)
+        assert "capacité" in messages
+        assert "°C" in messages

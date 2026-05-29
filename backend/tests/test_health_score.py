@@ -1,6 +1,4 @@
-"""Tests unitaires pour le calcul du score de sante."""
-
-import pytest
+"""Tests unitaires pour le calcul du score de santé."""
 
 from app.health_score import compute_health_score, get_status_label
 from app.schemas import MeasurementCreate
@@ -26,19 +24,19 @@ def _make_measurement(**overrides) -> MeasurementCreate:
 
 class TestStatusLabels:
     def test_excellent(self):
-        assert get_status_label(100) == "excellent"
+        assert get_status_label(100) == "Excellent"
 
     def test_normal(self):
-        assert get_status_label(85) == "normal"
-        assert get_status_label(70) == "normal"
+        assert get_status_label(85) == "Normal"
+        assert get_status_label(70) == "Normal"
 
     def test_a_surveiller(self):
-        assert get_status_label(50) == "a_surveiller"
-        assert get_status_label(40) == "a_surveiller"
+        assert get_status_label(50) == "À surveiller"
+        assert get_status_label(40) == "À surveiller"
 
     def test_critique(self):
-        assert get_status_label(39) == "critique"
-        assert get_status_label(0) == "critique"
+        assert get_status_label(39) == "Critique"
+        assert get_status_label(0) == "Critique"
 
 
 class TestHealthScore:
@@ -46,7 +44,7 @@ class TestHealthScore:
         m = _make_measurement()
         result = compute_health_score(m, nominal_current=100)
         assert result["score"] == 100.0
-        assert result["status"] == "excellent"
+        assert result["status"] == "Excellent"
 
     def test_high_current_lowers_score(self):
         m = _make_measurement(current_a=90, current_b=90, current_c=90)
@@ -70,7 +68,7 @@ class TestHealthScore:
         assert result["details"]["balance"] < 100
 
     def test_critical_system(self):
-        """Tout est mauvais : le score doit etre tres bas."""
+        """Tout est mauvais : le score doit être très bas."""
         m = _make_measurement(
             current_a=110, current_b=40, current_c=40,
             temperature_1=85, temperature_2=85, temperature_3=85,
@@ -78,10 +76,10 @@ class TestHealthScore:
         )
         result = compute_health_score(m, nominal_current=100)
         assert result["score"] < 40
-        assert result["status"] == "critique"
+        assert result["status"] == "Critique"
 
     def test_score_bounds(self):
-        """Le score doit toujours etre entre 0 et 100."""
+        """Le score doit toujours être entre 0 et 100."""
         m = _make_measurement()
         result = compute_health_score(m, nominal_current=100)
         assert 0 <= result["score"] <= 100
