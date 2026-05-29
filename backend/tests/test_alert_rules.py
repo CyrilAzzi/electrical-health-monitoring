@@ -302,7 +302,7 @@ class TestSensorFault:
         m = _make_measurement(current_a=45, current_b=0, current_c=48)
         alerts = check_sensor_fault(m)
         assert len(alerts) == 1
-        assert alerts[0]["rule_name"] == "sensor_fault"
+        assert alerts[0]["rule_name"] == "sensor_fault_ct_b"
         assert alerts[0]["severity"] == "critical"
         assert "phase B" in alerts[0]["message"]
 

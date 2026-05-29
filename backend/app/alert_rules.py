@@ -199,7 +199,7 @@ def check_sensor_fault(measurement: MeasurementCreate) -> list[dict]:
         for phase, value in currents.items():
             if value < 0.1:
                 alerts.append({
-                    "rule_name": "sensor_fault",
+                    "rule_name": f"sensor_fault_ct_{phase.lower()}",
                     "severity": "critical",
                     "message": (
                         f"CT phase {phase} possiblement débranché : "
@@ -216,7 +216,7 @@ def check_sensor_fault(measurement: MeasurementCreate) -> list[dict]:
     for sensor, value in temps.items():
         if value < -20 or value > 150:
             alerts.append({
-                "rule_name": "sensor_fault",
+                "rule_name": f"sensor_fault_temp_{sensor}",
                 "severity": "critical",
                 "message": (
                     f"Sonde température {sensor} défaillante : "
