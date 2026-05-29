@@ -140,11 +140,15 @@ def main():
             payload = json.dumps(data)
             client.publish(topic, payload)
 
-            print(f"[{step:04d}] Publie: I=[{data['current_a']:.1f}, "
-                  f"{data['current_b']:.1f}, {data['current_c']:.1f}]A  "
-                  f"T=[{data['temperature_1']:.1f}, {data['temperature_2']:.1f}, "
-                  f"{data['temperature_3']:.1f}]C  "
-                  f"Bat={data['battery_voltage']:.2f}V")
+            line = (f"[{step:04d}] Publie: I=[{data['current_a']:.1f}, "
+                   f"{data['current_b']:.1f}, {data['current_c']:.1f}]A  "
+                   f"T=[{data['temperature_1']:.1f}, {data['temperature_2']:.1f}, "
+                   f"{data['temperature_3']:.1f}]C")
+            if "battery_voltage" in data:
+                line += f"  Bat={data['battery_voltage']:.2f}V"
+            if "voltage_a" in data:
+                line += f"  V=[{data['voltage_a']:.1f}, {data['voltage_b']:.1f}, {data['voltage_c']:.1f}]"
+            print(line)
 
             step += 1
             time.sleep(args.interval)
