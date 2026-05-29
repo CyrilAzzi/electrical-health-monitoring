@@ -237,3 +237,52 @@ class TestEvaluateAll:
         messages = " ".join(a["message"] for a in alerts)
         assert "capacité" in messages
         assert "°C" in messages
+
+
+# --- Mode CT + Température seulement (sans tension ni batterie) ---
+
+def _make_ct_only_measurement(**overrides) -> MeasurementCreate:
+    """Helper : mesure CT + température seulement, sans tension ni batterie."""
+    defaults = {
+        "equipment_id": "TEST-CT",
+        "current_a": 50.0,
+        "current_b": 50.0,
+        "current_c": 50.0,
+        "temperature_1": 35.0,
+        "temperature_2": 35.0,
+        "temperature_3": 35.0,
+    }
+    defaults.update(overrides)
+    return MeasurementCreate(**defaults)
+
+
+class TestCTOnlyMode:
+    def test_no_alerts_for_healthy_ct_only(self):
+        m = _make_ct_only_measurement()
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        assert len(alerts) == 0
+
+    def test_overcurrent_works_without_voltage(self):
+        m = _make_ct_only_measurement(current_a=90)
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        assert any(a["rule_name"] == "overcurrent" for a in alerts)
+
+    def test_no_voltage_alerts_when_absent(self):
+        m = _make_ct_only_measurement()
+        alerts = evaluate_all_rules(m, nominal_current=100, nominal_voltage=120)
+        assert not any(a["rule_name"] == "abnormal_voltage" for a in alerts)
+
+    def test_no_battery_alerts_when_absent(self):
+        m = _make_ct_only_measurement()
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        assert not any(a["rule_name"] == "low_battery" for a in alerts)
+
+    def test_temperature_alert_works(self):
+        m = _make_ct_only_measurement(temperature_1=70)
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        assert any(a["rule_name"] == "high_temperature" for a in alerts)
+
+    def test_imbalance_works_without_voltage(self):
+        m = _make_ct_only_measurement(current_a=70, current_b=45, current_c=45)
+        alerts = evaluate_all_rules(m, nominal_current=100)
+        assert any(a["rule_name"] == "current_imbalance" for a in alerts)

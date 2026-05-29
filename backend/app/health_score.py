@@ -1,21 +1,24 @@
-"""Calcul du score de sante electrique (0-100).
+"""Calcul du score de santé électrique (0-100).
 
-Le score est compose de 5 sous-scores ponderes :
-- Courant (25%)      : penalite si proche ou au-dessus du nominal
-- Equilibre (20%)    : penalite si desequilibre entre phases
-- Temperature (25%)  : penalite si temperatures elevees
-- Tendance temp (10%): penalite si temperature en hausse continue
-- Batterie (20%)     : penalite si tension batterie basse
+Le score est composé de sous-scores pondérés. Les poids s'adaptent
+dynamiquement selon les capteurs disponibles :
+
+Avec tous les capteurs :
+- Courant (25%), Équilibre (20%), Température (25%), Tendance (10%), Batterie (20%)
+
+Sans tension ni batterie (mode CT + température) :
+- Courant (30%), Équilibre (25%), Température (30%), Tendance (15%)
 """
 
 from .schemas import MeasurementCreate
 
-WEIGHTS = {
-    "current": 0.25,
-    "balance": 0.20,
-    "temperature": 0.25,
-    "temp_trend": 0.10,
-    "battery": 0.20,
+# Poids de base pour chaque sous-score
+BASE_WEIGHTS = {
+    "current": 25,
+    "balance": 20,
+    "temperature": 25,
+    "temp_trend": 10,
+    "battery": 20,
 }
 
 
@@ -29,12 +32,11 @@ def _score_current(measurement: MeasurementCreate, nominal_current: float) -> fl
         return 100.0
     if ratio >= 1.0:
         return 0.0
-    # Interpolation lineaire entre 50% et 100%
     return max(0.0, (1.0 - ratio) / 0.5 * 100.0)
 
 
 def _score_balance(measurement: MeasurementCreate) -> float:
-    """Score equilibre : 100 si parfait, 0 si desequilibre > 30%."""
+    """Score équilibre : 100 si parfait, 0 si déséquilibre > 30%."""
     currents = [measurement.current_a, measurement.current_b, measurement.current_c]
     avg = sum(currents) / 3
     if avg == 0:
@@ -51,7 +53,7 @@ def _score_balance(measurement: MeasurementCreate) -> float:
 
 
 def _score_temperature(measurement: MeasurementCreate) -> float:
-    """Score temperature : 100 si < 40C, 0 si >= 80C."""
+    """Score température : 100 si < 40C, 0 si >= 80C."""
     max_temp = max(
         measurement.temperature_1, measurement.temperature_2, measurement.temperature_3
     )
@@ -73,7 +75,6 @@ def _score_temp_trend(temperatures_history: list[list[float]] | None) -> float:
     if not is_rising:
         return 100.0
 
-    # Penalite proportionnelle a la hausse totale
     delta = averages[-1] - averages[0]
     if delta <= 2:
         return 80.0
@@ -82,8 +83,10 @@ def _score_temp_trend(temperatures_history: list[list[float]] | None) -> float:
     return max(0.0, (15.0 - delta) / 13.0 * 80.0)
 
 
-def _score_battery(measurement: MeasurementCreate) -> float:
-    """Score batterie : 100 si >= 13V, 0 si <= 11V."""
+def _score_battery(measurement: MeasurementCreate) -> float | None:
+    """Score batterie : 100 si >= 13V, 0 si <= 11V. None si pas de capteur."""
+    if measurement.battery_voltage is None:
+        return None
     v = measurement.battery_voltage
     if v >= 13.0:
         return 100.0
@@ -108,8 +111,13 @@ def compute_health_score(
     nominal_current: float = 100.0,
     temperatures_history: list[list[float]] | None = None,
 ) -> dict:
-    """Calcule le score de sante global et les sous-scores."""
-    details = {
+    """Calcule le score de santé global et les sous-scores.
+
+    Les poids s'adaptent dynamiquement : si la batterie n'est pas mesurée,
+    son poids est redistribué proportionnellement aux autres sous-scores.
+    """
+    # Calculer tous les sous-scores
+    raw_scores = {
         "current": _score_current(measurement, nominal_current),
         "balance": _score_balance(measurement),
         "temperature": _score_temperature(measurement),
@@ -117,11 +125,22 @@ def compute_health_score(
         "battery": _score_battery(measurement),
     }
 
-    score = sum(details[k] * WEIGHTS[k] for k in WEIGHTS)
+    # Filtrer les sous-scores disponibles (exclure None)
+    available = {k: v for k, v in raw_scores.items() if v is not None}
+
+    # Recalculer les poids normalisés
+    total_weight = sum(BASE_WEIGHTS[k] for k in available)
+    weights = {k: BASE_WEIGHTS[k] / total_weight for k in available}
+
+    # Score pondéré
+    score = sum(available[k] * weights[k] for k in available)
     score = round(min(100.0, max(0.0, score)), 1)
+
+    # Détails : inclure tous les sous-scores disponibles
+    details = {k: round(v, 1) for k, v in available.items()}
 
     return {
         "score": score,
         "status": get_status_label(score),
-        "details": {k: round(v, 1) for k, v in details.items()},
+        "details": details,
     }

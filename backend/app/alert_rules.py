@@ -131,6 +131,8 @@ def check_low_battery(
     battery_min: float = 12.2,
 ) -> list[dict]:
     """Tension batterie sous le seuil configuré."""
+    if measurement.battery_voltage is None:
+        return []
     if measurement.battery_voltage < battery_min:
         battery_critical = battery_min - 0.7
         severity = "critical" if measurement.battery_voltage < battery_critical else "warning"
@@ -151,6 +153,8 @@ def check_abnormal_voltage(
     deviation_pct: float = 10.0,
 ) -> list[dict]:
     """Tension anormale sur une phase (écart vs nominal dépassant le seuil)."""
+    if measurement.voltage_a is None:
+        return []
     alerts = []
     threshold = nominal_voltage * (deviation_pct / 100)
     for phase, value in [
@@ -158,6 +162,8 @@ def check_abnormal_voltage(
         ("B", measurement.voltage_b),
         ("C", measurement.voltage_c),
     ]:
+        if value is None:
+            continue
         deviation = abs(value - nominal_voltage)
         if deviation > threshold:
             pct = round(deviation / nominal_voltage * 100, 1)

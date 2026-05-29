@@ -89,3 +89,54 @@ class TestHealthScore:
         history = [[30, 30, 30], [35, 35, 35], [40, 40, 40], [45, 45, 45]]
         result = compute_health_score(m, nominal_current=100, temperatures_history=history)
         assert result["details"]["temp_trend"] < 100
+
+
+# --- Mode CT + Température seulement ---
+
+class TestCTOnlyHealthScore:
+    def _make_ct_only(self, **overrides) -> MeasurementCreate:
+        defaults = {
+            "equipment_id": "TEST-CT",
+            "current_a": 30.0,
+            "current_b": 30.0,
+            "current_c": 30.0,
+            "temperature_1": 30.0,
+            "temperature_2": 30.0,
+            "temperature_3": 30.0,
+        }
+        defaults.update(overrides)
+        return MeasurementCreate(**defaults)
+
+    def test_perfect_ct_only(self):
+        m = self._make_ct_only()
+        result = compute_health_score(m, nominal_current=100)
+        assert result["score"] == 100.0
+        assert result["status"] == "Excellent"
+
+    def test_no_battery_in_details(self):
+        m = self._make_ct_only()
+        result = compute_health_score(m, nominal_current=100)
+        assert "battery" not in result["details"]
+
+    def test_four_subscores_only(self):
+        m = self._make_ct_only()
+        result = compute_health_score(m, nominal_current=100)
+        assert set(result["details"].keys()) == {"current", "balance", "temperature", "temp_trend"}
+
+    def test_weights_redistribute(self):
+        """Sans batterie, un courant élevé pèse plus lourd."""
+        m_with = _make_measurement(current_a=90, current_b=90, current_c=90)
+        m_without = self._make_ct_only(current_a=90, current_b=90, current_c=90)
+        score_with = compute_health_score(m_with, nominal_current=100)["score"]
+        score_without = compute_health_score(m_without, nominal_current=100)["score"]
+        # Sans batterie, le courant pèse plus -> score plus bas
+        assert score_without < score_with
+
+    def test_critical_ct_only(self):
+        m = self._make_ct_only(
+            current_a=110, current_b=40, current_c=40,
+            temperature_1=85, temperature_2=85, temperature_3=85,
+        )
+        result = compute_health_score(m, nominal_current=100)
+        assert result["score"] < 40
+        assert result["status"] == "Critique"

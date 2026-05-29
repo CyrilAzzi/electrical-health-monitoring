@@ -40,16 +40,20 @@ class Measurement(Base):
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    voltage_a: Mapped[float] = mapped_column(Float)
-    voltage_b: Mapped[float] = mapped_column(Float)
-    voltage_c: Mapped[float] = mapped_column(Float)
+    # Courant (obligatoire)
     current_a: Mapped[float] = mapped_column(Float)
     current_b: Mapped[float] = mapped_column(Float)
     current_c: Mapped[float] = mapped_column(Float)
+    # Température (obligatoire)
     temperature_1: Mapped[float] = mapped_column(Float)
     temperature_2: Mapped[float] = mapped_column(Float)
     temperature_3: Mapped[float] = mapped_column(Float)
-    battery_voltage: Mapped[float] = mapped_column(Float)
+    # Tension (optionnel)
+    voltage_a: Mapped[float | None] = mapped_column(Float, nullable=True)
+    voltage_b: Mapped[float | None] = mapped_column(Float, nullable=True)
+    voltage_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Batterie (optionnel)
+    battery_voltage: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
 class Alert(Base):

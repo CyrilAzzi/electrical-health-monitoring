@@ -68,11 +68,35 @@ def generate_battery(step: int):
     return base
 
 
+def generate_ct_only(step: int = 0):
+    """Mode CT + température seulement (pas de capteurs de tension)."""
+    return {
+        "current_a": round(45 + random.gauss(0, 3), 1),
+        "current_b": round(45 + random.gauss(0, 3), 1),
+        "current_c": round(45 + random.gauss(0, 3), 1),
+        "temperature_1": round(35 + random.gauss(0, 2), 1),
+        "temperature_2": round(34 + random.gauss(0, 2), 1),
+        "temperature_3": round(36 + random.gauss(0, 2), 1),
+    }
+
+
+def generate_ct_overheat(step: int):
+    """Mode CT seulement avec surchauffe progressive."""
+    base = generate_ct_only()
+    rise = min(step * 1.0, 50)
+    base["temperature_1"] = round(35 + rise + random.gauss(0, 0.5), 1)
+    base["temperature_2"] = round(34 + rise * 0.8 + random.gauss(0, 0.5), 1)
+    base["temperature_3"] = round(36 + rise * 0.9 + random.gauss(0, 0.5), 1)
+    return base
+
+
 SCENARIOS = {
     "normal": lambda step: generate_normal(),
     "overheat": generate_overheat,
     "imbalance": generate_imbalance,
     "battery": generate_battery,
+    "ct_only": lambda step: generate_ct_only(step),
+    "ct_overheat": generate_ct_overheat,
 }
 
 

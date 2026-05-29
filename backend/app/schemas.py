@@ -33,16 +33,20 @@ class EquipmentRead(EquipmentCreate):
 class MeasurementCreate(BaseModel):
     equipment_id: str
     timestamp: datetime | None = None
-    voltage_a: float
-    voltage_b: float
-    voltage_c: float
+    # Courant (obligatoire)
     current_a: float = Field(..., ge=0)
     current_b: float = Field(..., ge=0)
     current_c: float = Field(..., ge=0)
+    # Température (obligatoire)
     temperature_1: float
     temperature_2: float
     temperature_3: float
-    battery_voltage: float = Field(..., ge=0)
+    # Tension (optionnel — absent si pas de capteurs de tension)
+    voltage_a: float | None = None
+    voltage_b: float | None = None
+    voltage_c: float | None = None
+    # Batterie (optionnel — absent si pas d'UPS)
+    battery_voltage: float | None = Field(None, ge=0)
 
 
 class MeasurementRead(MeasurementCreate):
