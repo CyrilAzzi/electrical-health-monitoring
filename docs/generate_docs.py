@@ -25,7 +25,7 @@ OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 TITLE = "Electrical Health Monitoring"
 SUBTITLE = "Plateforme de monitoring intelligent d'équipements électriques"
-VERSION = "v1.0 — Mai 2026"
+VERSION = "v2.0 — Mai 2026"
 
 
 def _sections():
@@ -69,12 +69,14 @@ def _sections():
                 "Ce que le système surveille :",
                 "• Courant sur les 3 phases (A, B, C) — détecte surcharge et déséquilibre",
                 "• Température à 3 points dans le panneau — détecte surchauffe et tendance",
+                "• Ouverture de porte du panneau (optionnel)",
                 "• Tension sur les phases (optionnel, phase 2)",
                 "• Batterie de secours (optionnel, si UPS présent)",
                 "",
                 "Ce que le système fait automatiquement :",
-                "• Analyse chaque mesure en temps réel",
-                "• Déclenche des alertes selon 6 règles configurables",
+                "• Analyse chaque mesure en temps réel (9 règles d'alerte)",
+                "• Détecte les capteurs défectueux (CT débranché, sonde cassée)",
+                "• Alerte en cas de perte de communication avec un équipement",
                 "• Calcule un score de santé de 0 à 100",
                 "• Affiche un tableau de bord visuel (Grafana)",
                 "• Résout les alertes automatiquement quand le problème disparaît",
@@ -102,9 +104,11 @@ def _sections():
             ],
         },
         {
-            "title": "Les 6 règles d'alerte",
+            "title": "Les 9 règles d'alerte",
             "content": [
                 "Chaque règle a un seuil configurable par équipement :",
+                "",
+                "RÈGLES DE BASE (6) :",
                 "",
                 "1. SURCOURANT — Courant > 80% du nominal",
                 "   → Détecte une surcharge avant que le disjoncteur ne saute",
@@ -123,6 +127,22 @@ def _sections():
                 "",
                 "6. TENSION ANORMALE — Écart > 10% du nominal (si capteurs installés)",
                 "   → Problème d'alimentation en amont",
+                "",
+                "NOUVELLES RÈGLES (3) :",
+                "",
+                "7. CAPTEUR DÉFECTUEUX — CT débranché ou sonde température cassée",
+                "   → CT : courant = 0 A sur une phase alors que les autres sont actives",
+                "   → Sonde : lecture aberrante < -20°C ou > 150°C (DS18B20 défaillant)",
+                "   → Alerte distincte par capteur (ex: sensor_fault_ct_b, sensor_fault_temp_2)",
+                "",
+                "8. OUVERTURE DE PORTE — Porte du panneau électrique ouverte",
+                "   → Détecte ouverture non autorisée, intervention ou vandalisme",
+                "   → Nécessite un capteur magnétique à ~5$ (optionnel)",
+                "",
+                "9. PERTE DE COMMUNICATION — Aucune donnée reçue depuis X secondes",
+                "   → Surveille le moniteur lui-même, pas seulement l'équipement",
+                "   → Seuil configurable par équipement (défaut : 60 secondes)",
+                "   → Se résout automatiquement quand la communication reprend",
             ],
         },
         {
@@ -182,8 +202,9 @@ def _sections():
                 "Alimentation               | 5V USB              |  1  | ~8 $    | Amazon.ca",
                 "Prototypage                | Breadboard + fils   |  1  | ~10 $   | Amazon.ca",
                 "Boîtier                    | ABS projet          |  1  | ~8 $    | Amazon.ca",
+                "Capteur porte (optionnel)  | Reed switch magn.   |  1  | ~5 $    | Amazon.ca",
                 "",
-                "TOTAL PAR PANNEAU : ~100 à 130 $ CAD",
+                "TOTAL PAR PANNEAU : ~100 à 135 $ CAD",
                 "",
                 "Pour la phase 2 (avec tension) :",
                 "Transducteurs de tension industriels (CR Magnetics) : +150-200 $/panneau",
@@ -354,6 +375,7 @@ def _add_material_table(doc):
         ["Alimentation", "5V USB", "1", "~8 $", "Amazon.ca"],
         ["Prototypage", "Breadboard + fils", "1", "~10 $", "Amazon.ca"],
         ["Boîtier", "ABS projet", "1", "~8 $", "Amazon.ca"],
+        ["Capteur porte", "Reed switch magn.", "1", "~5 $", "Amazon.ca"],
     ]
 
     table = doc.add_table(rows=len(rows) + 1, cols=5)
@@ -371,7 +393,7 @@ def _add_material_table(doc):
 
     doc.add_paragraph()
     p = doc.add_paragraph()
-    run = p.add_run("TOTAL PAR PANNEAU : ~100 à 130 $ CAD")
+    run = p.add_run("TOTAL PAR PANNEAU : ~100 à 135 $ CAD")
     run.bold = True
 
 
@@ -496,6 +518,7 @@ def _add_pdf_material_table(pdf):
         ["Alimentation", "5V USB", "1", "~8 $", "Amazon.ca"],
         ["Prototypage", "Breadboard + fils", "1", "~10 $", "Amazon.ca"],
         ["Boîtier", "ABS projet", "1", "~8 $", "Amazon.ca"],
+        ["Capteur porte", "Reed switch", "1", "~5 $", "Amazon.ca"],
     ]
 
     col_widths = [38, 42, 12, 22, 38]
@@ -522,7 +545,7 @@ def _add_pdf_material_table(pdf):
     pdf.ln(5)
     pdf._font("B", 11)
     pdf.set_text_color(0, 51, 102)
-    pdf.cell(0, 8, "TOTAL PAR PANNEAU : ~100 à 130 $ CAD", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 8, "TOTAL PAR PANNEAU : ~100 à 135 $ CAD", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(5)
 
     # Texte phase 2
