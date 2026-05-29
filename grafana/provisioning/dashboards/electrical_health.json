@@ -1,0 +1,117 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Voltage par phase",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+          "rawSql": "SELECT timestamp AS \"time\", voltage_a AS \"Phase A\", voltage_b AS \"Phase B\", voltage_c AS \"Phase C\" FROM measurements WHERE equipment_id = '$equipment_id' AND $__timeFilter(timestamp) ORDER BY timestamp",
+          "format": "table",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "volt", "custom": { "lineWidth": 2 } },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Courant par phase",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+          "rawSql": "SELECT timestamp AS \"time\", current_a AS \"Phase A\", current_b AS \"Phase B\", current_c AS \"Phase C\" FROM measurements WHERE equipment_id = '$equipment_id' AND $__timeFilter(timestamp) ORDER BY timestamp",
+          "format": "table",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "amp", "custom": { "lineWidth": 2 } },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Temperatures",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+          "rawSql": "SELECT timestamp AS \"time\", temperature_1 AS \"Capteur 1\", temperature_2 AS \"Capteur 2\", temperature_3 AS \"Capteur 3\" FROM measurements WHERE equipment_id = '$equipment_id' AND $__timeFilter(timestamp) ORDER BY timestamp",
+          "format": "table",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "celsius", "custom": { "lineWidth": 2 } },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Tension batterie",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+          "rawSql": "SELECT timestamp AS \"time\", battery_voltage AS \"Batterie\" FROM measurements WHERE equipment_id = '$equipment_id' AND $__timeFilter(timestamp) ORDER BY timestamp",
+          "format": "table",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "volt", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Alertes recentes",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+          "rawSql": "SELECT created_at AS \"Date\", rule_name AS \"Regle\", severity AS \"Severite\", message AS \"Message\" FROM alerts WHERE equipment_id = '$equipment_id' ORDER BY created_at DESC LIMIT 50",
+          "format": "table",
+          "refId": "A",
+          "editorMode": "code"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "templating": {
+    "list": [
+      {
+        "name": "equipment_id",
+        "type": "query",
+        "datasource": { "type": "grafana-postgresql-datasource", "uid": "ehm-postgres" },
+        "query": "SELECT DISTINCT equipment_id FROM measurements",
+        "refresh": 2,
+        "current": { "text": "PANEL-001", "value": "PANEL-001" }
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Electrical Health Monitoring",
+  "uid": "ehm-dashboard"
+}
